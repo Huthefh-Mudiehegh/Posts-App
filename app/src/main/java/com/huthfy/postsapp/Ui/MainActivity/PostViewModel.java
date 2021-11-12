@@ -13,6 +13,15 @@ import com.huthfy.postsapp.Model.Models.PostModel;
 
 import java.util.List;
 
+import io.reactivex.Observable;
+import io.reactivex.Observer;
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
+import io.reactivex.rxjava3.annotations.NonNull;
+import io.reactivex.rxjava3.core.Scheduler;
+import io.reactivex.rxjava3.core.Single;
+import io.reactivex.rxjava3.core.SingleObserver;
+import io.reactivex.rxjava3.disposables.Disposable;
+import io.reactivex.schedulers.Schedulers;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -37,19 +46,35 @@ public class PostViewModel extends ViewModel {
 
     //bring posts from server
     public void bringPosts(){
-        postClient.getPosts().enqueue(new Callback<List<PostModel>>() {
+        Observable observable = postClient.getPosts()
+                .subscribeOn(Schedulers.io());
+
+        // note: be sure to choose observer from "reactivex"
+        Observer observer = new Observer() {
             @Override
-            public void onResponse(Call<List<PostModel>> call, Response<List<PostModel>> response) {
-                postsLivedata.setValue(response.body());
-                Log.d(TAG, "huthfy onResponse: got data from server");
+            public void onSubscribe(io.reactivex.disposables.Disposable d) {
+
             }
 
             @Override
-            public void onFailure(Call<List<PostModel>> call, Throwable t) {
-                    failedGetPost = true;
-                Log.d(TAG, "huthfy onFailure: OOPs! can't get data from server");
+            public void onNext(Object value) {
+                postsLivedata.postValue((List<PostModel>) value);
+                Log.d(TAG, "huthfy onResponse: got data from server");
+
             }
-        });
+
+            @Override
+            public void onError(Throwable e) {
+                Log.d(TAG, "huthfy Oops! failed to get data from server");
+
+            }
+
+            @Override
+            public void onComplete() {
+
+            }
+        };
+        observable.subscribe(observer);
     }
 
     public MutableLiveData<List<PostModel>> getPostsLivedata() {
